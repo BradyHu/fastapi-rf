@@ -1,0 +1,70 @@
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+
+
+        {
+            "name": "Python: 当前文件",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "Python: FastAPI",
+            "type": "python",
+            "request": "launch",
+            "module": "uvicorn",
+            "cwd": "${workspaceFolder}/src",
+            "args": [
+                "main:app",
+                "--reload",
+                "--host=0.0.0.0"
+            ],
+            "jinja": true,
+            "justMyCode": false
+        },
+        {
+            "name": "alembic revision",
+            "type": "python",
+            "request": "launch",
+            "module": "alembic",
+            "cwd": "${workspaceFolder}/src",
+            "args": [
+                "revision",
+                "--autogenerate",
+                "-m",
+                "'${input:MESSAGE}'"
+            ]
+        },
+        {
+            "name": "alembic upgrade",
+            "type": "python",
+            "request": "launch",
+            "module": "alembic",
+            "cwd": "${workspaceFolder}/src",
+            "args": [
+                "upgrade",
+                "${input:upgrade_arg}",
+            ]
+        }
+    ],
+    "inputs": [
+        {
+            "id": "MESSAGE",
+            "type": "promptString",
+            "description": "migrate description",
+            "default": "auto_create"
+        },
+        {
+            "id": "upgrade_arg",
+            "type": "promptString",
+            "description": "upgrade args",
+            "default": "head"
+        }
+    ]
+}
