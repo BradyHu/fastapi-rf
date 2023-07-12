@@ -7,7 +7,7 @@ from core.dependency import get_db
 from sqlalchemy.sql.expression import select
 from core.authorization import BaseAuthorization
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/user/token',  auto_error=False)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/user/account/token',  auto_error=False)
 
 
 class JWTAuthorization(BaseAuthorization):
