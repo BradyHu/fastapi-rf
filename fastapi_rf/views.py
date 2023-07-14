@@ -24,7 +24,7 @@ class action:
         func.is_endpoint = True
         func.url = self.url or func.__name__
         if not func.url.startswith('/'):
-            func.url = '/'+func.url
+            func.url = '/' + func.url
         if not func.url.endswith('/'):
             func.url += '/'
         func.method = self.method
@@ -62,7 +62,8 @@ class ViewSetMetaClass(type):
         for _name, info in dependencies.items():
             parameter_kwargs = {"default": info.get('default')}
             new_parameters.append(
-                inspect.Parameter(name=_name, kind=inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=info.get('hint'), **parameter_kwargs)
+                inspect.Parameter(name=_name, kind=inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=info.get('hint'),
+                                  **parameter_kwargs)
             )
         new_signature = old_signature.replace(parameters=new_parameters)
 
@@ -72,6 +73,7 @@ class ViewSetMetaClass(type):
                 if dep_value:
                     setattr(self, dep_name, dep_value)
             old_init(self, *args, **kwargs)
+
         new_cls = type.__new__(cls, name, bases, attrs)
         setattr(new_cls, "__signature__", new_signature)
         setattr(new_cls, "__init__", new_init)
@@ -101,6 +103,7 @@ def add_dependency_to_self(name, func, default=inspect._empty, annotation=inspec
     async def new_func(self, *args, **kwargs):
         setattr(self, name, kwargs.pop(name, None))
         return await func(self, *args, **kwargs)
+
     new_parameters = [first_parameter, inspect.Parameter(
         name=name,
         kind=inspect.Parameter.KEYWORD_ONLY,
@@ -165,6 +168,11 @@ class register:
 
 class AuthorizationMixin(BaseViewSet):
     _authorization_classes = []
+    _user = None
+
+    @property
+    def user(self):
+        return self._user
 
     @classmethod
     def update_endpoint_signature(cls, func):
@@ -186,13 +194,13 @@ class AuthorizationMixin(BaseViewSet):
         ]
         new_signature = old_signature.replace(parameters=params)
         setattr(get_user, '__signature__', new_signature)
-        new_func = add_dependency_to_self('user', func, default=Depends(get_user))
+        new_func = add_dependency_to_self('_user', func, default=Depends(get_user))
         return new_func
 
 
 class GenericViewSet(
-        AuthorizationMixin,
-        BaseViewSet):
+    AuthorizationMixin,
+    BaseViewSet):
     _model: T
     db: AsyncSession = Depends(get_db)
     _serializer_read: R
@@ -251,7 +259,7 @@ class PaginationMixin(BaseViewSet):
         if cls._pagination_class is None:
             if func.__name__ == 'list':
                 old_signature = inspect.signature(func)
-                return_annotation = list[getattr(cls, 'serializer_read', dict)]
+                return_annotation = list[getattr(cls, '_serializer_read', dict)]
                 new_signature = old_signature.replace(return_annotation=return_annotation)
                 setattr(func, "__signature__", new_signature)
             return func
@@ -339,12 +347,12 @@ class DestroyMixin(GenericViewSet):
 
 
 class ViewSet(
-        ListMixin,
-        CreateMixin,
-        RetrieveMixin,
-        UpdateMixin,
-        DestroyMixin,
-        GenericViewSet
+    ListMixin,
+    CreateMixin,
+    RetrieveMixin,
+    UpdateMixin,
+    DestroyMixin,
+    GenericViewSet
 ):
     pass
 

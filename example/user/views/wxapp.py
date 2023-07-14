@@ -2,12 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.expression import select, delete
+from sqlalchemy.orm import selectinload
 from wechatpy import WeChatClient
 from wechatpy import WeChatClientException
 
-from core.dependency import get_db
-from core.views import BaseViewSet, register, action
-from core.serializers import BaseSchemaModel
+from fastapi_rf.dependency import get_db
+from fastapi_rf.views import BaseViewSet, register, action
+from fastapi_rf.serializers import BaseSchemaModel
 from config.settings import WXAPP_KEYS
 import enum
 
@@ -31,9 +32,11 @@ class WxAPPViewSet(BaseViewSet):
     db: AsyncSession = Depends(get_db)
 
     @action('post')
-    def login(self,
-              wxapp_origin_id: str, code: str
-              ) -> serializers.Token:
+    async def login(
+            self,
+            wxapp_origin_id: str,
+            code: str
+    ) -> serializers.Token:
         """登录
         可以通过code 获取用户的openid， union id
         """
@@ -47,24 +50,31 @@ class WxAPPViewSet(BaseViewSet):
         json_data = wx_client.wxa.code_to_session(code)
         unionid = json_data.get('unionid')
         query = select(models.UserSocialAuth).where(
-            models.UserSocialAuth.provider=='wxapp',
-            models.UserSocialAuth.uid==unionid
-        ).options(selectin)
-        instance:models.UserSocialAuth = await self.db.scalar(query)
+            models.UserSocialAuth.provider == 'wxapp',
+            models.UserSocialAuth.uid == unionid
+        ).options(selectinload(models.UserSocialAuth.user))
+        instance: models.UserSocialAuth = await self.db.scalar(query)
+        if instance is None:
+            raise HTTPException(
+                400,
+                detail={
+                    'message': "找不到用户，请先注册",
+                    'unionid': unionid
+                }
+            )
+        user = instance.user
+        return {
+            'access_token': utils.create_access_token({'id': user.id}),
+            'token_type': 'bearer'
+        }
 
-        # session_key = json_data.get('session_key')
-        # self.redis.set(f"{self._redis_prefix}{unionid}", session_key)
-
-        # if user_uuid:
-        #     # 已有用户，需要直接注册登录
-        #     query = select(models.User).where(models.User.uuid=user_uuid)
     @action('post', 'register')
     async def _register(
-        self,
-        wxapp_origin_id: str,
-        mobile_code: str,
-        code: str = "",
-        union_id: str = ""
+            self,
+            wxapp_origin_id: str,
+            mobile_code: str,
+            code: str = "",
+            union_id: str = ""
     ) -> serializers.Token:
         """小程序注册接口"""
 
