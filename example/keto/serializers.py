@@ -1,5 +1,5 @@
 from __future__ import annotations
-from core.serializers import BaseSchemaModel
+from fastapi_rf.serializers import BaseSchemaModel
 from pydantic import constr
 
 

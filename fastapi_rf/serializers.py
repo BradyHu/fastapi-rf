@@ -1,9 +1,8 @@
 import datetime
-import typing
 
 import pydantic
 
-from . import utils
+from fastapi_rf import utils
 
 
 class BaseSchemaModel(pydantic.BaseModel):

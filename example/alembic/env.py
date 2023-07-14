@@ -6,7 +6,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
-from core.models import Base
+from fastapi_rf.models import Base
 from config.database import DATABASE
 
 # this is the Alembic Config object, which provides

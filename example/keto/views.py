@@ -1,10 +1,11 @@
 from . import models
 from . import serializers
 from fastapi import APIRouter, HTTPException
-from core.views import ViewSet, register, action, GenericViewSet
-from core.pagination import LimitOffsetPagination
+from fastapi_rf.views import ViewSet, register, action, GenericViewSet
+from fastapi_rf.pagination import LimitOffsetPagination
 from .api import read
 from user.authorization import JWTAuthorization
+
 router = APIRouter(
     prefix='/keto'
 )

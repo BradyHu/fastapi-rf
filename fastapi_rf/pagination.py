@@ -4,8 +4,8 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends
 # Dependency
-from core.dependency import get_db
-from core.serializers import BaseSchemaModel
+from fastapi_rf.dependency import get_db
+from fastapi_rf.serializers import BaseSchemaModel
 
 
 class BasePagination:

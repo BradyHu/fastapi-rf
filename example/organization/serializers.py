@@ -1,4 +1,4 @@
-from core.serializers import BaseSchemaModel as BaseModel
+from fastapi_rf.serializers import BaseSchemaModel as BaseModel
 
 class OrganizationBase(BaseModel):
     pass

@@ -1,6 +1,6 @@
 from sqlalchemy import Boolean, Column, Integer, String
 
-from core.models import CoreModel, Base
+from fastapi_rf.models import CoreModel, Base
 
 
 class User(CoreModel, Base):

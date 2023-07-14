@@ -3,9 +3,9 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.expression import select, delete
 
-from core.dependency import get_db
-from core.views import BaseViewSet, register, action
-from core.serializers import BaseSchemaModel
+from fastapi_rf.dependency import get_db
+from fastapi_rf.views import BaseViewSet, register, action
+from fastapi_rf.serializers import BaseSchemaModel
 import enum
 
 from user import serializers

@@ -1,4 +1,4 @@
-from core.pagination import BasePagination
+from fastapi_rf.pagination import BasePagination
 import inspect
 import typing as t
 from functools import wraps
@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Response, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.expression import select, Select
 
-from core.dependency import get_db
+from fastapi_rf.dependency import get_db
 
 
 class action:

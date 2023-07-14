@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.expression import select
 
-from core.dependency import get_db
+from fastapi_rf.dependency import get_db
 
 from . import serializers
 from . import models

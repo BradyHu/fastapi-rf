@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String
 
 
 from . import definitions
-from core.models import CoreModel, Base
+from fastapi_rf.models import CoreModel, Base
 
 
 class KetoRelationTuples(CoreModel, Base):
