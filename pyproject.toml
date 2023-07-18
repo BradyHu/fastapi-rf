@@ -20,10 +20,14 @@ asyncpg = "^0.28.0"
 wechatpy = "^1.8.18"
 aioredis = "^2.0.1"
 hiredis = "^2.2.3"
+pytest = "^7.4.0"
+httpx = "^0.24.1"
+pytest-env = "^0.8.2"
 
 
 [tool.poetry.group.dev.dependencies]
 autopep8 = "^2.0.2"
+
 
 [build-system]
 requires = ["poetry-core"]

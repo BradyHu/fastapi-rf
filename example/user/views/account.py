@@ -3,13 +3,11 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.expression import select
 
+from fastapi_rf.core import BaseViewSet, register, action
 from fastapi_rf.dependency import get_db
-from fastapi_rf.views import BaseViewSet, register, action
-
-from user import serializers
 from user import models
+from user import serializers
 from user import utils
-
 
 router = APIRouter()
 
@@ -18,8 +16,8 @@ router = APIRouter()
 class AccountViewSet(BaseViewSet):
     db: AsyncSession = Depends(get_db)
 
-    @action('post', 'register')
-    async def _register(self, user: serializers.UserCreate,) -> serializers.UserRead:
+    @action('post', 'register', detail=False)
+    async def _register(self, user: serializers.UserCreate, ) -> serializers.UserRead:
 
         # @router.post('/register')
         # async def register(user: serializers.UserCreate, db: AsyncSession = Depends(get_db)) -> serializers.UserRead:
@@ -35,7 +33,7 @@ class AccountViewSet(BaseViewSet):
         await self.db.flush()
         return instance
 
-    @action('post')
+    @action('post', detail=False)
     async def token(self, form_data: OAuth2PasswordRequestForm = Depends()) -> serializers.Token:
         query = select(models.User).filter_by(username=form_data.username)
         instance = await self.db.scalar(query)

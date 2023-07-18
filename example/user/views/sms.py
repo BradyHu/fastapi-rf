@@ -1,17 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.security import OAuth2PasswordRequestForm
+import enum
+
+from fastapi import APIRouter, Depends, HTTPException, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.expression import select, delete
 
+from fastapi_rf.core import BaseViewSet, register, action
 from fastapi_rf.dependency import get_db
-from fastapi_rf.views import BaseViewSet, register, action
 from fastapi_rf.serializers import BaseSchemaModel
-import enum
-
-from user import serializers
 from user import models
+from user import serializers
 from user import utils
-
 
 router = APIRouter()
 
@@ -32,7 +30,7 @@ class SendSMS(BaseSchemaModel):
 class SmsViewSet(BaseViewSet):
     db: AsyncSession = Depends(get_db)
 
-    @action('post')
+    @action('post', detail=False)
     async def code(self, data: SendSMS):
         mobile = data.mobile
         action = data.action
@@ -54,7 +52,7 @@ class SmsViewSet(BaseViewSet):
             "code": code
         }
 
-    @action('post', 'register')
+    @action('post', 'register', detail=False)
     async def _register(self, mobile: str, code: str) -> serializers.UserRead:
         """注册接口不是必须的，因为登录接口会默认给用户做注册"""
         query = select(models.VerifyCode).filter_by(
@@ -93,8 +91,8 @@ class SmsViewSet(BaseViewSet):
         await self.db.flush()
         return instance
 
-    @action('post', 'login')
-    async def login(self, mobile: str, code: str) -> serializers.Token:
+    @action('post', 'login', detail=False)
+    async def login(self, mobile: str = Form(), code: str = Form(), ) -> serializers.Token:
         query = select(models.VerifyCode).filter_by(
             mobile=mobile,
             action=Action.login

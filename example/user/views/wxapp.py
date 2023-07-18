@@ -7,7 +7,7 @@ from wechatpy import WeChatClient
 from wechatpy import WeChatClientException
 
 from fastapi_rf.dependency import get_db
-from fastapi_rf.views import BaseViewSet, register, action
+from fastapi_rf.core import BaseViewSet, register, action
 from fastapi_rf.serializers import BaseSchemaModel
 from config.settings import WXAPP_KEYS
 import enum
@@ -31,7 +31,7 @@ class WxAPPViewSet(BaseViewSet):
     # _redis_prefix = 'wxapp:'
     db: AsyncSession = Depends(get_db)
 
-    @action('post')
+    @action('post',detail=False)
     async def login(
             self,
             wxapp_origin_id: str,
@@ -68,7 +68,7 @@ class WxAPPViewSet(BaseViewSet):
             'token_type': 'bearer'
         }
 
-    @action('post', 'register')
+    @action('post', 'register',detail=False)
     async def _register(
             self,
             wxapp_origin_id: str,

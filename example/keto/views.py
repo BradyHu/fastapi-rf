@@ -1,10 +1,10 @@
 from . import models
 from . import serializers
 from fastapi import APIRouter, HTTPException
-from fastapi_rf.views import ViewSet, register, action, GenericViewSet
+from fastapi_rf.core import register, action, GenericViewSet
 from fastapi_rf.pagination import LimitOffsetPagination
 from .api import read
-from user.authorization import JWTAuthorization
+from config.views import ViewSet
 
 router = APIRouter(
     prefix='/keto'
@@ -17,7 +17,6 @@ class KetoViewSet(ViewSet):
     _serializer_read = serializers.KetoRelationTuplesRead
     _serializer_write = serializers.KetoRelationTuplesWrite
     _pagination_class = LimitOffsetPagination
-    _authorization_classes = [JWTAuthorization]
 
 
 @register(router, 'read')

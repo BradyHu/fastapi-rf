@@ -6,7 +6,8 @@
   - 视图装饰器register 可直接将类中实现的endpoint注册到router中
   - endpoint装饰器action，用于声明一个函数为一个endpoint
   - 并注入AsyncSession 到db属性
-  - 翻页插件，pagination_class,可扩展
+  - 默认集成了翻页功能
+  - 在user部分实现了用户登录功能，后续在此基础上可扩展添加权限相关功能
 - 集成SQLalchemy + asyncpg
 - 异步查询的高效可扩展权限系统，源码参考了ory keto(Zanzibar的一个go的实现)，
 - 
@@ -16,7 +17,7 @@
 ## TODO
 基于keto实现内置的权限管理系统基类，方便实现权限管理
 集成fastapi-filter
-后续把核心的功能单独抽出去，成为一个单独的包，方便管理
+抽出配置函数，实现单例，从而实现配置的注入
 
 
 ## 思路

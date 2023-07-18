@@ -3,8 +3,8 @@ from fastapi_rf.serializers import BaseSchemaModel as BaseModel
 
 
 class UserBase(BaseModel):
-    username: str = None
-    nickname: str
+    username: str|None = None
+    nickname: str|None = None
 
     class Config:
         orm_mode = True

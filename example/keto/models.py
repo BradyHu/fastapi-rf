@@ -6,7 +6,7 @@ from fastapi_rf.models import CoreModel, Base
 
 
 class KetoRelationTuples(CoreModel, Base):
-
+    __tablename__='keto_relationtuple'
     id = Column(Integer(), primary_key=True, index=True)
     namespace = Column(String(length=255))
     object = Column(String(length=255))

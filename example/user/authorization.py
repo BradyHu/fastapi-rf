@@ -5,9 +5,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from . import utils, models
 from fastapi_rf.dependency import get_db
 from sqlalchemy.sql.expression import select
-from fastapi_rf.authorization import BaseAuthorization
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/user/account/token',  auto_error=False)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/user/account/token', auto_error=False)
+
+
+class BaseAuthorization:
+    async def __call__(self, *args, **kwargs):
+        raise NotImplementedError
 
 
 class JWTAuthorization(BaseAuthorization):

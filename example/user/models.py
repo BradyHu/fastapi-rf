@@ -1,9 +1,11 @@
 from __future__ import annotations
-from sqlalchemy import Boolean, Column, Integer, String, ForeignKey
+
+import uuid
+
+from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from fastapi_rf.models import CoreModel, Base
-import uuid
 
 
 class User(CoreModel, Base):
@@ -18,8 +20,8 @@ class User(CoreModel, Base):
     email: Mapped[str | None] = mapped_column(String(length=64))
     mobile: Mapped[str | None] = mapped_column(String(length=32))
 
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    social_authes: Mapped[list[UserSocialAuth]] = relationship(back_populates='user')
+    is_superuser: Mapped[bool] = mapped_column(default=False)
+    is_active: Mapped[bool] = mapped_column(default=True)
 
 
 class VerifyCode(CoreModel, Base):
@@ -38,3 +40,6 @@ class UserSocialAuth(CoreModel, Base):
     user: Mapped[User] = relationship(back_populates='social_authes')
     provider: Mapped[str] = mapped_column(String(length=12), nullable=False)
     uid: Mapped[str] = mapped_column(String(length=64), index=True)
+
+
+User.social_authes: Mapped[list[UserSocialAuth]] = relationship(UserSocialAuth, back_populates='user')

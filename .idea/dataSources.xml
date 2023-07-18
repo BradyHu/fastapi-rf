@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="db" uuid="0fca3c52-ac97-444f-a0b3-c16bec7f54a5">
+    <data-source source="LOCAL" name="db" uuid="44b94887-43db-4b85-bae4-f9a7485c2f52">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
-      <jdbc-url>jdbc:sqlite:C:\Users\ctdna\PycharmProjects\fastapi-rf\example\db.sqlite</jdbc-url>
+      <jdbc-url>jdbc:sqlite:C:\Users\ctdna\PycharmProjects\fastapi-rf\db.sqlite</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
       <libraries>
         <library>
