@@ -61,25 +61,25 @@ class LimitOffsetPagination(BasePagination):
         )
         ret = ret.all()
         return {
-            "total": await self.db.scalar(select(func.count("*")).select_from(qs)),
+            "total": await self.db.scalar(select(func.count("*")).select_from(qs.subquery())),
             "limit": self.limit,
             "offset": self.offset,
             "results": ret
         }
 
 
-class PaginationMixin(BaseViewSet):
-    _pagination_class: t.Type[BasePagination] | None = None
+class PaginationMixin(BaseViewSet, ignores=['pagination_class']):
+    pagination_class: t.Type[BasePagination] | None = None
     if t.TYPE_CHECKING:
-        _pagination_class: BasePagination | None = None
+        pagination_class: BasePagination | None = None
 
     @classmethod
     def update_endpoint_signature(cls, func):
         func = super().update_endpoint_signature(func)
-        if cls._pagination_class is None:
+        if cls.pagination_class is None:
             if func.__name__ == 'list':
                 old_signature = inspect.signature(func)
-                return_annotation = list[getattr(cls, '_serializer_read', dict)]
+                return_annotation = list[getattr(cls, 'serializer_read', dict)]
                 new_signature = old_signature.replace(return_annotation=return_annotation)
                 setattr(func, "__signature__", new_signature)
             return func
@@ -89,8 +89,8 @@ class PaginationMixin(BaseViewSet):
             return func
         # 处理翻页涉及的list endpoint
         old_signature = inspect.signature(func)
-        return_annotation = cls._pagination_class.get_paginated_return_type(getattr(cls, '_serializer_read', dict))
+        return_annotation = cls.pagination_class.get_paginated_return_type(getattr(cls, 'serializer_read', dict))
         new_signature = old_signature.replace(return_annotation=return_annotation)
         setattr(func, "__signature__", new_signature)
-        new_func = add_dependency_to_self('_pagination_class', func, default=Depends(cls._pagination_class), )
+        new_func = add_dependency_to_self('pagination_class', func, default=Depends(cls.pagination_class), )
         return new_func

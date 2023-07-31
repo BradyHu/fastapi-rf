@@ -1,3 +1,4 @@
+import asyncio
 import inspect
 import typing as t
 from functools import wraps
@@ -33,7 +34,14 @@ class action:
 
 
 class ViewSetMetaClass(type):
-    def __new__(cls, name, bases, attrs):
+    def __new__(cls, name, bases, attrs, ignores=None):
+        if ignores is None:
+            ignores = []
+        for base in bases:
+            base_ignores = getattr(base, '_ignores', [])
+            for i in base_ignores:
+                if i not in ignores:
+                    ignores.append(i)
         old_init: Callable[..., Any] = attrs.get("__init__", lambda self: None)
         old_signature = inspect.signature(old_init)
         old_parameters = list(old_signature.parameters.values())[1:]  # drop `self` parameter
@@ -54,7 +62,7 @@ class ViewSetMetaClass(type):
         # other annotate
         for _name, hint in attrs.get("__annotations__", {}).items():
             # 私有变量不做处理
-            if _name.startswith("_"):
+            if _name.startswith("_") or _name in ignores:
                 continue
             dependencies.setdefault(_name, {})
             dependencies[_name]['hint'] = hint
@@ -70,7 +78,7 @@ class ViewSetMetaClass(type):
         def new_init(self: Any, *args: Any, **kwargs: Any) -> None:
             for dep_name in dependencies.keys():
                 dep_value = kwargs.pop(dep_name, None)
-                if dep_value:
+                if dep_value is not None:
                     setattr(self, dep_name, dep_value)
             old_init(self, *args, **kwargs)
 
@@ -78,6 +86,7 @@ class ViewSetMetaClass(type):
         setattr(new_cls, "__signature__", new_signature)
         setattr(new_cls, "__init__", new_init)
         setattr(new_cls, '_dependencies', dependencies)
+        setattr(new_cls, '_ignores', ignores)
         return new_cls
 
     def __getattribute__(self, __name: str) -> Any:
@@ -94,7 +103,17 @@ R = t.TypeVar("R")
 W = t.TypeVar("W")
 
 
-def add_dependency_to_self(name, func, default=inspect._empty, annotation=inspect._empty, ):
+def wrap_func(func):
+    @wraps(func)
+    async def new_func(*args, **kwargs):
+        if asyncio.iscoroutinefunction(func):
+            return await func(*args, **kwargs)
+        return func(*args, **kwargs)
+
+    return new_func
+
+
+def add_dependency_to_self(name, func, default=inspect.Parameter.empty, annotation=inspect.Parameter.empty, ):
     old_signature = inspect.signature(func)
     old_parameters: list[inspect.Parameter] = list(old_signature.parameters.values())
     first_parameter = old_parameters[0]
@@ -115,17 +134,17 @@ def add_dependency_to_self(name, func, default=inspect._empty, annotation=inspec
     return new_func
 
 
-class BaseViewSet(t.Generic[T, R, W], metaclass=ViewSetMetaClass):
+class BaseViewSet(t.Generic[T, R, W], metaclass=ViewSetMetaClass, ignores=['pk_field', 'pk_type']):
     if t.TYPE_CHECKING:
         _dependencies: dict = {}
-    _pk_field = 'id'
-    _pk_type = int
+    pk_field = 'id'
+    pk_type = int
 
     @classmethod
     def discover_endpoint(cls):
         for func_name, func in inspect.getmembers(cls, inspect.isfunction):
             if getattr(func, 'is_endpoint', False):
-                yield func_name, cls.update_endpoint_signature(func)
+                yield func_name, cls.update_endpoint_signature(wrap_func(func))
 
     @classmethod
     def update_endpoint_signature(cls, func):
@@ -137,19 +156,22 @@ class BaseViewSet(t.Generic[T, R, W], metaclass=ViewSetMetaClass):
         new_parameters = [new_first_parameter] + [
             parameter.replace(
                 kind=inspect.Parameter.KEYWORD_ONLY,
-                default=parameter.default if parameter.default != inspect._empty else None
+                default=parameter.default if parameter.default != inspect.Parameter.empty else None
             ) for parameter in old_parameters[1:]
         ]
         new_signature = old_signature.replace(parameters=new_parameters)
         setattr(func, "__signature__", new_signature)
         if getattr(func, 'detail', False):
-            func = add_dependency_to_self(cls._pk_field, func, annotation=cls._pk_type, )
+            func = add_dependency_to_self(cls.pk_field, func, annotation=cls.pk_type, )
         return func
 
     @classmethod
     def register(cls, router: APIRouter, path):
         for _, func in cls.discover_endpoint():
-            getattr(router, func.method)(f"/{path}{func.url}")(func)
+            if func.detail:
+                getattr(router, func.method)(f"/{path}/{{{cls.pk_field}}}{func.url}")(func)
+            else:
+                getattr(router, func.method)(f"/{path}{func.url}")(func)
 
 
 class register:
@@ -162,20 +184,22 @@ class register:
         return cls
 
 
-class GenericViewSet(BaseViewSet):
-    _model: T
+class GenericViewSet(BaseViewSet, ignores=['serializer_read', 'serializer_write', 'model']):
+    model: T
     db: AsyncSession = Depends(get_db)
-    _serializer_read: R
-    _serializer_write: W
+    serializer_read: R
+    serializer_write: W
+    if t.TYPE_CHECKING:
+        id: t.Any
 
     async def get_queryset(self) -> Select:
-        return select(self._model)
+        return select(self.model)
 
-    async def get_object(self) -> T:
+    async def get_object(self, *options) -> T:
         ret = await self.db.scalar(
-            await self.get_queryset().filter_by(**{
-                self._pk_field: self.id
-            })
+            (await self.get_queryset()).filter_by(**{
+                self.pk_field: self.id
+            }).options(*options)
         )
         if ret is None:
             raise HTTPException(
@@ -192,11 +216,11 @@ class GenericViewSet(BaseViewSet):
         new_parameters = []
         for param in old_parameters:
             if param.annotation == T:
-                annotation = cls._model
+                annotation = cls.model
             elif param.annotation == R:
-                annotation = cls._serializer_read
+                annotation = cls.serializer_read
             elif param.annotation == W:
-                annotation = cls._serializer_write
+                annotation = cls.serializer_write
             else:
                 annotation = param.annotation
             new_parameters.append(
@@ -204,9 +228,9 @@ class GenericViewSet(BaseViewSet):
             )
         return_annotation = old_signature.return_annotation
         if return_annotation == T:
-            return_annotation = cls._model
+            return_annotation = cls.model
         elif return_annotation == R:
-            return_annotation = cls._serializer_read
+            return_annotation = cls.serializer_read
         new_signature = old_signature.replace(parameters=new_parameters, return_annotation=return_annotation)
         setattr(func, "__signature__", new_signature)
         return func

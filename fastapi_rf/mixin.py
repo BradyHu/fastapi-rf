@@ -7,8 +7,8 @@ from fastapi_rf.pagination import PaginationMixin
 
 class ListMixin(PaginationMixin, GenericViewSet):
     async def list(self):
-        if self._pagination_class:
-            return await self._pagination_class.paginate(await self.get_queryset())
+        if self.pagination_class:
+            return await self.pagination_class.paginate(await self.get_queryset())
         ret = await self.db.scalars(
             await self.get_queryset()
         )
@@ -22,13 +22,13 @@ class ListMixin(PaginationMixin, GenericViewSet):
 
 class CreateMixin(GenericViewSet):
     async def create(self, body: W) -> R:
-        query = select(self._model).filter_by(**body.dict())
+        query = select(self.model).filter_by(**body.dict())
         if await self.db.scalar(query):
             raise HTTPException(
                 400,
                 "record already exists"
             )
-        instance = self._model(**body.dict())
+        instance = self.model(**body.dict())
         self.db.add(instance)
         await self.db.flush()
         return instance
@@ -45,7 +45,7 @@ class RetrieveMixin(GenericViewSet):
 
     @classmethod
     def discover_endpoint(cls):
-        cls.retrieve = action('get', f"/{{{cls._pk_field}}}/")(cls.retrieve)
+        cls.retrieve = action('get', f"/")(cls.retrieve)
         return super().discover_endpoint()
 
 
@@ -59,7 +59,7 @@ class UpdateMixin(GenericViewSet):
 
     @classmethod
     def discover_endpoint(cls):
-        cls.update = action('put', f"/{{{cls._pk_field}}}/")(cls.update)
+        cls.update = action('put', f"/")(cls.update)
         return super().discover_endpoint()
 
 
@@ -71,5 +71,5 @@ class DestroyMixin(GenericViewSet):
 
     @classmethod
     def discover_endpoint(cls):
-        cls.destroy = action('delete', f"/{{{cls._pk_field}}}/")(cls.destroy)
+        cls.destroy = action('delete', f"/")(cls.destroy)
         return super().discover_endpoint()

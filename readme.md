@@ -27,3 +27,8 @@
 
 ### 内网
 支持账号密码，管理员账号可修改其他账号密码，进行重置
+更新日志
+# 2023年7月31日
+核心重构，通过元类参数，增加忽略子类参数功能，并且mixin重构，去掉重要属性的下划线
+增加sqlalchemy_to_pydantic方法（https://github.com/tiangolo/pydantic-sqlalchemy）
+增加筛选中间件,参考了他人工作（https://github.com/arthurio/fastapi-filter），并剥离了排序搜索功能，后面做成单独的中间件
