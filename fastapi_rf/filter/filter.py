@@ -54,7 +54,7 @@ Examples:
     user_id__in
 """
 
-# refer: https://github.com/arthurio/fastapi-filter
+
 class Filter(BaseFilterModel):
     """Base filter for orm related filters.
 
@@ -100,7 +100,7 @@ class Filter(BaseFilterModel):
         for field_name, value in self.filtering_fields:
             field_value = getattr(self, field_name)
             if isinstance(field_value, Filter):
-                query = field_value.filter(query.join(Filter.Constants.model, Filter.Constants.onclause))
+                query = field_value.filter(query.join(field_value.Constants.model, field_value.Constants.onclause))
             else:
                 if "__" in field_name:
                     field_name, operator = re.compile(r'(.*?)__(\w+)$').findall(field_name)[0]

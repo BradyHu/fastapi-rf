@@ -28,10 +28,15 @@ class CreateMixin(GenericViewSet):
                 400,
                 "record already exists"
             )
-        instance = self.model(**body.dict())
+        data = body.dict()
+        data.update(await self.get_create_extra_info())
+        instance = self.model(**data)
         self.db.add(instance)
         await self.db.flush()
         return instance
+
+    async def get_create_extra_info(self) -> dict:
+        return {}
 
     @classmethod
     def discover_endpoint(cls):

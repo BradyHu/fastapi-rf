@@ -17,7 +17,7 @@ class BaseSchemaModel(pydantic.BaseModel):
         json_encoders: dict = {datetime.datetime: utils.format_datetime_into_isoformat}
         # alias_generator: typing.Any = utils.format_dict_key_to_camel_case
 
-# refer: https://github.com/tiangolo/pydantic-sqlalchemy
+
 def sqlalchemy_to_pydantic(
         db_model: Type, *, config: Type = BaseSchemaModel.Config, exclude: Container[str] = []
 ) -> Type[BaseModel]:
@@ -40,7 +40,7 @@ def sqlalchemy_to_pydantic(
                 default = None
                 if column.default is None and not column.nullable:
                     default = ...
-                fields[name] = (python_type, default)
+                fields[name] = (python_type, pydantic.Field(default=default, description=column.comment))
     pydantic_model = create_model(
         db_model.__name__, __config__=config, **fields  # type: ignore
     )

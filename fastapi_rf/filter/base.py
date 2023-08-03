@@ -1,9 +1,11 @@
+import re
 from collections.abc import Iterable
 from copy import deepcopy
-from typing import Any, Dict, Optional, Tuple, Type, Union
+from typing import Any, Dict, Optional, Tuple, Type, Union, Annotated, get_args
 
-from fastapi import Depends
+from fastapi import Depends, Query
 from fastapi.exceptions import RequestValidationError
+from fastapi.params import Depends
 from pydantic import BaseModel, Extra, ValidationError, create_model, fields, validator
 from pydantic.fields import FieldInfo
 
@@ -100,18 +102,47 @@ def with_prefix(prefix: str, Filter: Type[BaseFilterModel]):
 
 
 def _list_to_str_fields(filter_class: Type[BaseFilterModel]):
-    ret: Dict[str, Tuple[Union[object, Type], Optional[FieldInfo]]] = {}
+    # ret: Dict[str, Tuple[Union[object, Type], Optional[FieldInfo]]] = {}
+    ret = {
+        "__annotations__": {}
+    }
     for f in filter_class.__fields__.values():
         field_info = deepcopy(f.field_info)
         if f.shape == fields.SHAPE_LIST:
             if isinstance(field_info.default, Iterable):
                 field_info.default = ",".join(field_info.default)
-            ret[f.name] = (str if f.required else Optional[str], field_info)
-        else:
-            field_type = filter_class.__annotations__.get(f.name, f.outer_type_)
-            ret[f.name] = (field_type if f.required else Optional[field_type], field_info)
+            if f.default is not None:
+                ret[f.name] = f.default
+            if type(None) in get_args(f.annotation):
+                ret['__annotations__'][f.name] = str | None
+            else:
+                ret['__annotations__'][f.name] = str
+    NestedFilter = type("NestedFilter", (filter_class,), ret)
+    return NestedFilter
 
-    return ret
+
+def _with_description(filter_class: Type[BaseFilterModel]):
+    ret: Dict[str, Tuple[Union[object, Type], FieldInfo | None]] = {
+        "__annotations__": {}
+    }
+    for f in filter_class.__fields__.values():
+        field_info: FieldInfo = deepcopy(f.field_info)
+        field_type = filter_class.__annotations__.get(f.name, f.outer_type_)
+        field_type = field_type if f.required else Optional[field_type]
+        # get field comment
+        field_name = f.name
+        if "__" in field_name:
+            field_name, operator = re.compile(r'(.*?)__(\w+)$').findall(field_name)[0]
+        model_field = getattr(filter_class.Constants.model, field_name)
+        description = getattr(model_field, 'comment', None)
+        if isinstance(f.default, Depends):
+            continue
+        ret[f.name] = f.default
+        ret['__annotations__'][f.name] = Annotated[field_type, Query(description=description)]
+        # ret[f.name] = (Annotated[field_type, Query(description=description)], field_info)
+
+    NestedFilter = type("NestedFilter", (filter_class,), ret)
+    return NestedFilter
 
 
 def FilterDepends(Filter: Type[BaseFilterModel], *, by_alias: bool = False, use_cache: bool = True) -> Any:
@@ -125,8 +156,9 @@ def FilterDepends(Filter: Type[BaseFilterModel], *, by_alias: bool = False, use_
     When we apply the filter, we build the original filter to properly validate the data (i.e. can the string be parsed
     and formatted as a list of <type>?)
     """
-    fields = _list_to_str_fields(Filter)
-    GeneratedFilter: Type[BaseFilterModel] = create_model(Filter.__class__.__name__, **fields)
+    GeneratedFilter = _with_description(_list_to_str_fields(Filter))
+
+    # GeneratedFilter = _list_to_str_fields(Filter)
 
     class FilterWrapper(GeneratedFilter):  # type: ignore[misc,valid-type]
         def filter(self, *args, **kwargs):
@@ -136,4 +168,4 @@ def FilterDepends(Filter: Type[BaseFilterModel], *, by_alias: bool = False, use_
                 raise RequestValidationError(e.raw_errors) from e
             return original_filter.filter(*args, **kwargs)
 
-    return Depends(FilterWrapper)
+    return Depends(GeneratedFilter)

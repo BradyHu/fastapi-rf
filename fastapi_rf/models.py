@@ -18,12 +18,12 @@ class CoreModel(object):
 
     @declared_attr
     def id(self):
-        return Column(Integer, primary_key=True)
+        return Column(Integer, primary_key=True, comment='主键')
 
     @declared_attr
     def created_at(self):
-        return Column(DateTime(), server_default=func.now())
+        return Column(DateTime(), server_default=func.now(), comment='创建时间')
 
     @declared_attr
     def updated_at(self):
-        return Column(DateTime,  server_default=func.now(), server_onupdate=func.now())
+        return Column(DateTime, server_default=func.now(), server_onupdate=func.now(), comment='更新时间')
