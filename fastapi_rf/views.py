@@ -1,5 +1,6 @@
 from fastapi_rf.core import GenericViewSet
-from fastapi_rf.mixin import ListMixin, CreateMixin, RetrieveMixin, UpdateMixin, DestroyMixin
+from fastapi_rf.mixin import ListMixin, CreateMixin, RetrieveMixin, UpdateMixin, DestroyMixin, PartialUpdateMixin
+from fastapi_rf.mixin import BatchCreateMixin, BatchDestroyMixin
 
 
 class ViewSet(
@@ -7,7 +8,10 @@ class ViewSet(
     CreateMixin,
     RetrieveMixin,
     UpdateMixin,
+    PartialUpdateMixin,
     DestroyMixin,
+    BatchCreateMixin,
+    BatchDestroyMixin,
     GenericViewSet
 ):
     pass

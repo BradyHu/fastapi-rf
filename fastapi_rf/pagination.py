@@ -3,6 +3,7 @@ import typing as t
 from typing import Any
 
 from fastapi import Depends
+from pydantic.generics import GenericModel
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Select
@@ -35,6 +36,17 @@ class BasePagination:
         return PaginatedResponse
 
 
+T = t.TypeVar("T")
+
+
+class LimitOffsetResp(GenericModel, t.Generic[T]):
+    total: int
+    limit: int
+    offset: int
+    results: list[T]
+    Config = BaseSchemaModel.Config
+
+
 class LimitOffsetPagination(BasePagination):
     DEFAULT_LIMIT = 20
 
@@ -45,15 +57,7 @@ class LimitOffsetPagination(BasePagination):
 
     @classmethod
     def get_schema(cls, model: Any):
-        klass = type(f"{model.__name__}LimitOffsetResponse", (BaseSchemaModel,), {
-            "__annotations__": {
-                "total": int,
-                "limit": int,
-                "offset": int,
-                "results": list[model]
-            }
-        })
-        return klass
+        return LimitOffsetResp[model]
 
     async def paginate(self, qs: Select):
         ret = await self.db.scalars(
@@ -64,6 +68,39 @@ class LimitOffsetPagination(BasePagination):
             "total": await self.db.scalar(select(func.count("*")).select_from(qs.subquery())),
             "limit": self.limit,
             "offset": self.offset,
+            "results": ret
+        }
+
+
+class PageSizeResp(GenericModel, t.Generic[T]):
+    page_num: int
+    page_size: int
+    total: int
+    results: list[T]
+    Config = BaseSchemaModel.Config
+
+
+class PageSizePagination(BasePagination):
+    DEFAULT_SIZE = 20
+
+    def __init__(self, page_num: int = 1, page_size: int = DEFAULT_SIZE, db: AsyncSession = Depends(get_db)):
+        self.page_num = page_num
+        self.page_size = page_size
+        self.db = db
+
+    @classmethod
+    def get_schema(cls, model: Any):
+        return PageSizeResp[model]
+
+    async def paginate(self, qs: Select):
+        ret = await self.db.scalars(
+            qs.limit(self.page_size).offset(self.page_num * self.page_size - self.page_size)
+        )
+        ret = ret.all()
+        return {
+            "total": await self.db.scalar(select(func.count("*")).select_from(qs.subquery())),
+            "page_num": self.page_num,
+            "page_size": self.page_size,
             "results": ret
         }
 

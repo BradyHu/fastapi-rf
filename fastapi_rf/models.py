@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import Column, Integer, DateTime
 from sqlalchemy.sql import func
 from sqlalchemy.ext.declarative import declared_attr
@@ -22,8 +24,9 @@ class CoreModel(object):
 
     @declared_attr
     def created_at(self):
-        return Column(DateTime(), server_default=func.now(), comment='创建时间')
+        return Column(DateTime(timezone=True), default=datetime.utcnow, comment='创建时间')
 
     @declared_attr
     def updated_at(self):
-        return Column(DateTime, server_default=func.now(), server_onupdate=func.now(), comment='更新时间')
+        return Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow,
+                      comment='更新时间')

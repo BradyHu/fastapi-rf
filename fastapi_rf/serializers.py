@@ -18,6 +18,14 @@ class BaseSchemaModel(pydantic.BaseModel):
         # alias_generator: typing.Any = utils.format_dict_key_to_camel_case
 
 
+class AllOptional(pydantic.main.ModelMetaclass):
+    def __new__(cls, name, bases, namespaces, **kwargs):
+        sub_cls = super().__new__(cls, name, bases, namespaces, **kwargs)
+        for field in sub_cls.__fields__.values():
+            field.required = False
+        return sub_cls
+
+
 def sqlalchemy_to_pydantic(
         db_model: Type, *, config: Type = BaseSchemaModel.Config, exclude: Container[str] = []
 ) -> Type[BaseModel]:

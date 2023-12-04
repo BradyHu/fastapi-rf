@@ -6,10 +6,12 @@ from typing import Any, Callable
 
 import fastapi.params
 from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.expression import select, Select
 
 from fastapi_rf.dependency import get_db
+from fastapi_rf.serializers import AllOptional
 
 
 class action:
@@ -44,7 +46,8 @@ class ViewSetMetaClass(type):
                     ignores.append(i)
         old_init: Callable[..., Any] = attrs.get("__init__", lambda self: None)
         old_signature = inspect.signature(old_init)
-        old_parameters = list(old_signature.parameters.values())[1:]  # drop `self` parameter
+        old_parameters = list(old_signature.parameters.values())[
+                         1:]  # drop `self` parameter
         new_parameters = [
             x for x in old_parameters if x.kind not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
         ]
@@ -115,7 +118,8 @@ def wrap_func(func):
 
 def add_dependency_to_self(name, func, default=inspect.Parameter.empty, annotation=inspect.Parameter.empty, ):
     old_signature = inspect.signature(func)
-    old_parameters: list[inspect.Parameter] = list(old_signature.parameters.values())
+    old_parameters: list[inspect.Parameter] = list(
+        old_signature.parameters.values())
     first_parameter = old_parameters[0]
 
     @wraps(func)
@@ -129,7 +133,8 @@ def add_dependency_to_self(name, func, default=inspect.Parameter.empty, annotati
         default=default,
         annotation=annotation
     )] + old_parameters[1:]
-    new_signature = old_signature.replace(parameters=new_parameters, return_annotation=old_signature.return_annotation)
+    new_signature = old_signature.replace(
+        parameters=new_parameters, return_annotation=old_signature.return_annotation)
     setattr(new_func, "__signature__", new_signature)
     return new_func
 
@@ -149,9 +154,11 @@ class BaseViewSet(t.Generic[T, R, W], metaclass=ViewSetMetaClass, ignores=['pk_f
     @classmethod
     def update_endpoint_signature(cls, func):
         old_signature = inspect.signature(func)
-        old_parameters: list[inspect.Parameter] = list(old_signature.parameters.values())
+        old_parameters: list[inspect.Parameter] = list(
+            old_signature.parameters.values())
         old_first_parameter = old_parameters[0]
-        new_first_parameter = old_first_parameter.replace(default=Depends(cls), kind=inspect.Parameter.POSITIONAL_ONLY)
+        new_first_parameter = old_first_parameter.replace(
+            default=Depends(cls), kind=inspect.Parameter.POSITIONAL_ONLY)
 
         new_parameters = [new_first_parameter] + [
             parameter.replace(
@@ -162,14 +169,16 @@ class BaseViewSet(t.Generic[T, R, W], metaclass=ViewSetMetaClass, ignores=['pk_f
         new_signature = old_signature.replace(parameters=new_parameters)
         setattr(func, "__signature__", new_signature)
         if getattr(func, 'detail', False):
-            func = add_dependency_to_self(cls.pk_field, func, annotation=cls.pk_type, )
+            func = add_dependency_to_self(
+                cls.pk_field, func, annotation=cls.pk_type, )
         return func
 
     @classmethod
     def register(cls, router: APIRouter, path):
         for _, func in cls.discover_endpoint():
             if func.detail:
-                getattr(router, func.method)(f"/{path}/{{{cls.pk_field}}}{func.url}")(func)
+                getattr(router, func.method)(
+                    f"/{path}/{{{cls.pk_field}}}{func.url}")(func)
             else:
                 getattr(router, func.method)(f"/{path}{func.url}")(func)
 
@@ -189,22 +198,23 @@ class GenericViewSet(BaseViewSet, ignores=['serializer_read', 'serializer_write'
     db: AsyncSession = Depends(get_db)
     serializer_read: R
     serializer_write: W
+    order_by: int = 'id'
     if t.TYPE_CHECKING:
         id: t.Any
 
     async def get_queryset(self) -> Select:
-        return select(self.model)
+        return select(self.model).order_by(text(self.order_by))
 
     async def get_object(self, *options) -> T:
         ret = await self.db.scalar(
             (await self.get_queryset()).filter_by(**{
-                self.pk_field: self.id
+                self.pk_field: getattr(self, self.pk_field)
             }).options(*options)
         )
         if ret is None:
             raise HTTPException(
                 400,
-                f"can not find object {self.model} {self.id}"
+                f"can not find object {self.model} {getattr(self, self.pk_field)}"
             )
         return ret
 
@@ -212,17 +222,29 @@ class GenericViewSet(BaseViewSet, ignores=['serializer_read', 'serializer_write'
     def update_endpoint_signature(cls, func):
         func = super().update_endpoint_signature(func)
         old_signature = inspect.signature(func)
-        old_parameters: list[inspect.Parameter] = list(old_signature.parameters.values())
+        old_parameters: list[inspect.Parameter] = list(
+            old_signature.parameters.values())
         new_parameters = []
-        for param in old_parameters:
-            if param.annotation == T:
+
+        def trans_annotation(annotation, partial=False):
+            if annotation == T:
                 annotation = cls.model
-            elif param.annotation == R:
+            elif annotation == R:
                 annotation = cls.serializer_read
-            elif param.annotation == W:
-                annotation = cls.serializer_write
+            elif annotation == W:
+                if partial:
+                    annotation = AllOptional(f'Optional{cls.serializer_write.__name__}', (cls.serializer_write,), {})
+                else:
+                    annotation = cls.serializer_write
+            elif t.get_origin(annotation) is list:
+                annotation = list[trans_annotation(t.get_args(annotation)[0])]
             else:
-                annotation = param.annotation
+                annotation = annotation
+            return annotation
+
+        partial = func.__name__ == 'partial_update'
+        for param in old_parameters:
+            annotation = trans_annotation(param.annotation, partial=partial)
             new_parameters.append(
                 param.replace(annotation=annotation)
             )
@@ -231,6 +253,7 @@ class GenericViewSet(BaseViewSet, ignores=['serializer_read', 'serializer_write'
             return_annotation = cls.model
         elif return_annotation == R:
             return_annotation = cls.serializer_read
-        new_signature = old_signature.replace(parameters=new_parameters, return_annotation=return_annotation)
+        new_signature = old_signature.replace(
+            parameters=new_parameters, return_annotation=return_annotation)
         setattr(func, "__signature__", new_signature)
         return func

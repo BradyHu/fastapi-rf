@@ -23,7 +23,7 @@ class FilterMixin(GenericViewSet, ignores=['filter_class']):
         func = super().update_endpoint_signature(func)
         if cls.filter_class is None:
             return func
-        if func.detail:
+        if func.detail or func.method !='get':
             new_func = add_dependency_to_self('filter_class', func, default=Depends(lambda: None))
             return new_func
         new_func = add_dependency_to_self('filter_class', func, default=FilterDepends(cls.filter_class), )

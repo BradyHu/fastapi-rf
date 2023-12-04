@@ -21,12 +21,7 @@ def _backward_compatible_value_for_like_and_ilike(value: str):
         Either the unmodified value if a percent sign is present, the value wrapped in % otherwise to preserve
         current behavior.
     """
-    if "%" not in value:
-        warn(
-            "You must pass the % character explicitly to use the like and ilike operators.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
+    if value[0] != '%' and value[-1] != '%':
         value = f"%{value}%"
     return value
 
@@ -98,6 +93,8 @@ class Filter(BaseFilterModel):
 
     def filter(self, query: Union[Query, Select]):
         for field_name, value in self.filtering_fields:
+            if value is None or value == '':
+                continue
             field_value = getattr(self, field_name)
             if isinstance(field_value, Filter):
                 query = field_value.filter(query.join(field_value.Constants.model, field_value.Constants.onclause))
